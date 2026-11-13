@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>금진 벽지 생산계획 시스템 (화면 시안)</title>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#1d2433;--sub:#667085;--line:#d5dbe5;--pri:#1f4e8c;--pri2:#e8f0fb;--ok:#2e7d32;--warn:#b26a00}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Malgun Gothic","돋움",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;gap:12px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+header small{opacity:.8;margin-left:8px;font-weight:normal}
+.user{display:flex;align-items:center;gap:10px;font-size:13px}
+.user .info{text-align:right;line-height:1.35}
+.badge{display:inline-block;padding:1px 8px;border-radius:10px;background:#ffffff30;font-size:12px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 14px}
+button.p{background:var(--pri);color:#fff;border-color:var(--pri)}
+header button{background:#fff;color:var(--pri);border:0}
+main{max-width:1500px;margin:0 auto;padding:16px 20px 40px}
+.notice{background:#fff8e1;border:1px solid #f0d78c;color:#6b5200;padding:8px 12px;border-radius:6px;margin-bottom:14px;font-size:13px}
+.steps{display:flex;gap:0;margin-bottom:16px;flex-wrap:wrap}
+.step{flex:1;min-width:150px;padding:10px 14px;background:#e3e8f0;color:var(--sub);border-right:2px solid var(--bg);font-weight:bold;cursor:pointer}
+.step span{display:block;font-weight:normal;font-size:12px}
+.step.on{background:var(--pri);color:#fff}
+.step.done{background:var(--pri2);color:var(--pri)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.num{background:var(--pri);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+fieldset{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin:0}
+legend{font-weight:bold;padding:0 6px;color:var(--pri)}
+label{display:inline-flex;align-items:center;gap:5px;margin:3px 12px 3px 0}
+input[type=date],input[type=text],input[type=password],select,input[type=number]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:5px}
+table.f{border-collapse:collapse;width:100%}
+table.f th,table.f td{border:1px solid var(--line);padding:5px 8px;text-align:center}
+table.f th{background:#f0f3f8}
+.hint{color:var(--sub);font-size:12px;margin:6px 0 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:bold}
+.c-ok{background:#e4f4e5;color:var(--ok)}.c-wait{background:#fff0d6;color:var(--warn)}.c-no{background:#eceff3;color:var(--sub)}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.flow .node{border:1px solid var(--line);border-radius:8px;padding:8px 14px;text-align:center;min-width:140px}
+.flow .arrow{color:var(--sub);font-size:20px}
+/* ---- 생산계획표 (엑셀 서식) ---- */
+.sheetwrap{overflow-x:auto;background:#fff;padding:8px}
+.sheet{font-family:"돋움","Malgun Gothic",sans-serif;min-width:1150px}
+.sheet h3{font-size:18px;margin:4px 0 6px}
+table.plan{border-collapse:collapse;width:100%;table-layout:fixed;font-size:13px;font-weight:bold}
+table.plan th,table.plan td{border:1px solid #888;padding:1px 4px;height:21px;text-align:center;overflow:hidden;white-space:nowrap}
+table.plan thead th{background:#fff;border:2px solid #000;font-size:14px}
+table.plan td.day{border:2px solid #000;width:56px;font-size:14px;background:#fff}
+table.plan td.q{text-align:right;padding-right:8px}
+table.plan td.gs{border-left:2px solid #000}
+table.plan td.ge{border-right:2px solid #000}
+table.plan tr.sum td{border-top:1px solid #000;border-bottom:2px solid #000;background:#fafafa}
+table.plan tr.tot td{border:2px solid #000;font-size:15px;height:26px;background:#f0f0f0}
+table.plan td.c1{text-align:left;padding-left:6px}
+td[contenteditable]:focus{outline:2px solid #5b9bd5}
+.dates{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.gh{display:flex;justify-content:space-between;align-items:center;margin:6px 0}.cnt{color:var(--pri);font-weight:bold}
+table.shift{border-collapse:separate;border-spacing:6px 6px;margin:0 auto}
+table.shift th{font-size:13px}table.shift th small{display:block;font-weight:normal;color:var(--sub);font-size:11px}
+table.shift td.d{font-weight:bold;text-align:center;font-size:15px}table.shift td.we{color:#b3402a}
+.tg{width:54px;padding:6px 0;border-radius:8px;border:1px dashed #b5bcc8;background:#fff;color:#a0a7b4;font-size:13px}
+.tg.day.on{background:#2060b8;color:#fff;border:1px solid #2060b8}
+.tg.night.on{background:#1c2540;color:#fff;border:1px solid #1c2540}
+table.stock td.r{text-align:right}
+
+.notice.sm{padding:4px 10px;margin-bottom:8px;font-size:12px}
+.steps{margin-bottom:8px}.step{padding:5px 10px;font-size:13px}.step span{font-size:11px}
+main{padding-top:10px}
+.card.top{padding:10px 12px;margin-bottom:10px}
+.cols{display:grid;grid-template-columns:1.25fr 1.1fr 1fr;gap:12px}
+.col{border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+.col h2{font-size:14px;margin:0 0 6px;justify-content:flex-start}.col h2 small{font-weight:normal;color:var(--sub);font-size:11px}
+.col .num{width:18px;height:18px;font-size:11px}
+.col .dates{margin:0 0 4px;display:flex;align-items:center;gap:6px}.col .dates input{padding:2px 4px;font-size:12px}
+.col .gh{margin:2px 0;font-size:12px}
+.col table.shift{border-spacing:3px 2px}
+.col .tg{width:40px;padding:1px 0;font-size:11px;border-radius:5px}
+.col table.shift td.d{font-size:12px}.col table.shift th{font-size:11px}
+.col .hint{margin:3px 0 0;font-size:11px}
+.col table.f th,.col table.f td{padding:2px 4px;font-size:12px}
+.col table.f input{padding:2px 4px;font-size:12px;width:100%}
+.col .sub{margin:6px 0 3px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.col button{padding:2px 8px;font-size:12px}
+.col .flow{gap:4px}.col .flow .node{min-width:0;padding:4px 8px;font-size:12px;flex:1}.col .flow .arrow{font-size:14px}
+.col .actions{margin-top:8px;gap:4px}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}}
+/* 모달 */
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:10}
+.modal.show{display:flex}
+.box{background:#fff;border-radius:10px;padding:22px;width:340px;max-width:92vw}
+.box h3{margin:0 0 12px}
+.box .row{margin-bottom:10px;display:flex;flex-direction:column;gap:4px}
+.box .row input{width:100%}
+@media print{
+ @page{size:A4 landscape;margin:8mm}
+ header,.notice,.steps,.card.noprint,.noprint,.hint{display:none!important}
+ body{background:#fff}main{padding:0;max-width:none}
+ .card{border:0;padding:0;margin:0}
+ .sheetwrap{overflow:visible;padding:0}
+ .sheet{min-width:0;zoom:.62}
+ table.plan{font-size:12px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>㈜금진 벽지 생산계획 시스템 <small>화면 시안 (기능 미구현)</small></h1>
+  <div class="user">
+    <div class="info">
+      <div id="uname">로그인이 필요합니다</div>
+      <div><span class="badge" id="urole">비로그인</span></div>
+    </div>
+    <button onclick="openLogin()">로그인</button>
+    <button onclick="alert('시안: 로그아웃 기능은 구현 전입니다.')">로그아웃</button>
+  </div>
+</header>
+
+<main>
+<div class="notice noprint sm">※ 화면 시안입니다. 버튼은 동작하지 않으며(인쇄·화면 이동 제외), 계획표 숫자는 엑셀 「참조-생산계획26.11월1주」 월~목 데이터를 옮긴 <b>샘플</b>입니다.</div>
+
+<div class="steps noprint" id="steps">
+  <div class="step on" data-s="1" onclick="go(1)">① 기간·변수 입력<span>작업기간, 설비, 재고기준</span></div>
+  <div class="step" data-s="2" onclick="go(2)">② 계획표 생성<span>자동 배정</span></div>
+  <div class="step" data-s="3" onclick="go(3)">③ 담당자 검토·수정<span>김영동</span></div>
+  <div class="step" data-s="4" onclick="go(4)">④ 승인<span>박용희</span></div>
+  <div class="step" data-s="5" onclick="go(5)">⑤ 배포<span>모니터 게시</span></div>
+</div>
+
+<section class="card noprint top" id="sec1">
+  <div class="cols">
+    <div class="col">
+      <h2><span class="num">1</span>작업기간</h2>
+      <div class="dates">
+        <input type="date" value="2026-11-16"> ~ <input type="date" value="2026-11-22">
+      </div>
+      <div class="gh"><b>요일별 가동 (주/야)</b></div>
+      <table class="shift" id="shift">
+        <tr><th></th><th colspan="2">1호기<small>A·B</small></th><th colspan="2">2호기<small>D</small></th><th colspan="2">3호기<small>E·F</small></th></tr>
+      </table>
+      <p class="hint" id="last"></p>
+    </div>
+
+    <div class="col">
+      <h2><span class="num">2</span>작업변수 <small>재고생산 (1파렛트 1,872M · 3파렛트 단위)</small></h2>
+      <table class="f stock">
+        <tr><th>등급</th><th>파렛트 수</th><th>환산(M)</th></tr>
+        <tr><td><b>S등급</b></td><td><input type="number" min="0" step="3" value="0"></td><td class="r">0</td></tr>
+        <tr><td><b>A등급</b></td><td><input type="number" min="0" step="3" value="0"></td><td class="r">0</td></tr>
+      </table>
+      <p class="sub"><b>그 외 재고생산 품목</b> <button>+ 추가</button></p>
+      <table class="f stock" id="extra">
+        <tr><th>색상(제품)</th><th>파렛트</th><th>비고</th><th></th></tr>
+        <tr><td><input type="text" placeholder="82601-5"></td><td><input type="number" min="0" step="3"></td><td><input type="text"></td><td><button>×</button></td></tr>
+        <tr><td><input type="text"></td><td><input type="number" min="0" step="3"></td><td><input type="text"></td><td><button>×</button></td></tr>
+      </table>
+    </div>
+
+    <div class="col">
+      <h2><span class="num">3</span>진행상태 <span class="chip c-wait">작성중</span></h2>
+      <div class="flow">
+        <div class="node"><b>담당자</b><br>김영동<br><span class="chip c-wait">작성중</span></div><div class="arrow">→</div>
+        <div class="node"><b>승인자</b><br>박용희<br><span class="chip c-no">대기</span></div><div class="arrow">→</div>
+        <div class="node"><b>배포</b><br>모니터<br><span class="chip c-no">미배포</span></div>
+      </div>
+      <table class="f stock" style="margin-top:8px">
+        <tr><th>대상 주차</th><td>11/16 ~ 11/22</td></tr>
+        <tr><th>최종 저장</th><td>-</td></tr>
+        <tr><th>승인 일시</th><td>-</td></tr>
+      </table>
+      <div class="actions">
+        <button class="p" onclick="go(2)">계획표 생성</button>
+        <button>검토 완료·승인 요청</button>
+        <button>승인</button><button>반려</button>
+        <button class="p" disabled title="승인 후 사용 가능">배포</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="sec2">
+  <h2><span><span class="num">2</span>생산계획표 <small style="font-weight:normal;color:var(--sub)">(샘플)</small></span>
+    <span class="noprint"><button onclick="document.getElementById('sheet').toggleAttribute('data-edit')">검토·수정 모드 안내</button>
+    <button class="p" onclick="window.print()">🖨 인쇄</button></span></h2>
+  <div class="sheetwrap"><div class="sheet" id="sheet">
+    <h3>★. (주)금진 11월 1주차 생산계획</h3>
+    <table class="plan">
+      <colgroup><col style="width:56px"><col style="width:8%"><col style="width:7%"><col style="width:3.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:8%"><col style="width:7%"><col style="width:3.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:8%"><col style="width:7%"><col style="width:3.5%"><col style="width:6.5%"><col style="width:5.5%"></colgroup>
+      <thead>
+        <tr><th rowspan="2">생산일</th><th colspan="5">1 호기</th><th colspan="5">2 호기</th><th colspan="5">3 호기</th></tr>
+        <tr><th>색상</th><th>수량(M)</th><th>권취</th><th>업 체 명</th><th>비 고</th><th>색상</th><th>수량(M)</th><th>권취</th><th>업 체 명</th><th>비 고</th><th>색상</th><th>수량(M)</th><th>권취</th><th>업 체 명</th><th>비 고</th></tr>
+      </thead>
+      <tbody>
+<tr><td class="day" rowspan="13"><div>11/2</div><div>월</div></td><td class="c1 ">PR045-1</td><td class="q">2,246.4</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td><td class="c1 gs">7096-21</td><td class="q">62.4</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge"></td><td class="c1 gs">7115-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 ">PR045-2</td><td class="q">11,232</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs">7121-1</td><td class="q">22,464</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td><td class="c1 gs">7115-2</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 ">PR044-6</td><td class="q">1,123.2</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7115-6</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 ">82575-1</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">LP88071-16</td><td class="q">4,056</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr><td class="c1 ">82575-2</td><td class="q">16,848</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">PR046-1</td><td class="q">2,246.4</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr><td class="c1 ">82579-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">PR046-2</td><td class="q">3,369.6</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr><td class="c1 ">82579-3</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">PR031-3</td><td class="q">11,232</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr><td class="c1 ">82601-1</td><td class="q">11,232</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7102-2</td><td class="q">1,248</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7102-2</td><td class="q">2,496</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7085-16</td><td class="q">312</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7085-16</td><td class="q">1,248</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">8197-1</td><td class="q">7,488</td><td class="w">31.2</td><td>천안물류</td><td class="ge"></td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q">57,657.6</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">22,526.4</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">46,800</td><td class="ge"></td></tr>
+<tr><td class="day" rowspan="10"><div>11/3</div><div>화</div></td><td class="c1 ">82601-5</td><td class="q">89,856</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs">7121-2</td><td class="q">16,848</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td><td class="c1 gs">7124-3</td><td class="q">7,488</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7121-4</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td><td class="c1 gs">7124-4</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7121-5</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td><td class="c1 gs">82603-1</td><td class="q">7,488</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7106-2</td><td class="q">1,248</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td><td class="c1 gs">82603-2</td><td class="q">16,848</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82603-3</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82606-1</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82607-1</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82558-2</td><td class="q">16,848</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">LP7110-27</td><td class="q">936</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q">89,856</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">29,328</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">68,328</td><td class="ge"></td></tr>
+<tr><td class="day" rowspan="14"><div>11/4</div><div>수</div></td><td class="c1 ">FH8190-1</td><td class="q">15,007.2</td><td class="w">31.2</td><td>천안물류</td><td class="ge"></td><td class="c1 gs">FDF013-4</td><td class="q">1,092</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">82436-2</td><td class="q">499.2</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr><td class="c1 ">F8190-32</td><td class="q">9,391.2</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">2문</td><td class="c1 gs">FDF013-5</td><td class="q">1,092</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">7090-7</td><td class="q">3,744</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 ">F82417-4</td><td class="q">1,248</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">FDF014-4</td><td class="q">1,092</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">F7090-6</td><td class="q">2,496</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td></tr>
+<tr><td class="c1 ">F7105-1</td><td class="q">2,496</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">FDF007-5</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">F88262-1</td><td class="q">4,992</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td></tr>
+<tr><td class="c1 ">F82542-8</td><td class="q">2,496</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">FDF008-3</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td><td class="c1 gs">F88296-2</td><td class="q">2,215.2</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">27문</td></tr>
+<tr><td class="c1 ">88283-3</td><td class="q">249.6</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">F88302-2</td><td class="q">1,248</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td></tr>
+<tr><td class="c1 ">82601-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">F82547-1</td><td class="q">2,496</td><td class="w">15.6</td><td>시판</td><td class="ge">F100</td></tr>
+<tr><td class="c1 ">82601-5</td><td class="q">33,696</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82547-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">210</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82526-1</td><td class="q">7,488</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7043-4</td><td class="q">156</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">29문</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">7043-37</td><td class="q">31.2</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">29문</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">88170-1</td><td class="q">1,560</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">26문11/5납</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">88213-2</td><td class="q">2,496</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q">70,200</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">7,644</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">35,037.6</td><td class="ge"></td></tr>
+<tr><td class="day" rowspan="11"><div>11/5</div><div>목</div></td><td class="c1 ">82601-5</td><td class="q">44,928</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs">DF008-1</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">7122-2</td><td class="q">7,488</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 ">82601-6</td><td class="q">22,464</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs">DF008-2</td><td class="q">4,368</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">7122-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 ">82601-1</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td><td class="c1 gs">DF003-4</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">7122-4</td><td class="q">5,616</td><td class="w">15.6</td><td>시판</td><td class="ge">215</td></tr>
+<tr><td class="c1 ">82601-2</td><td class="q">16,848</td><td class="w">15.6</td><td>시판</td><td class="ge">무광W</td><td class="c1 gs">DF003-5</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">R82187-1</td><td class="q">1,872</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">DF007-3</td><td class="q">3,276</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">R88018-1</td><td class="q">3,120</td><td class="w">31.2</td><td>㈜엘그랑</td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">DF007-4</td><td class="q">2,184</td><td class="w">15.6</td><td>시판</td><td class="ge">D100</td><td class="c1 gs">R88018-1</td><td class="q">9,360</td><td class="w">31.2</td><td>JB</td><td class="ge">펄약하게</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">82542-6</td><td class="q">10,920</td><td class="w">31.2</td><td>모젤특판㈜</td><td class="ge">29문</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">8197-1</td><td class="q">31,824</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">PR033-1</td><td class="q">4,492.8</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs">PR033-3</td><td class="q">1,123.2</td><td class="w">15.6</td><td>시판</td><td class="ge">D120</td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q">89,856</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">16,380</td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q">81,432</td><td class="ge"></td></tr>
+<tr><td class="day" rowspan="4"><div>11/6</div><div>금</div></td><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td></tr>
+<tr><td class="day" rowspan="4"><div>11/7</div><div>토</div></td><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr><td class="c1 "></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td><td class="c1 gs"></td><td class="q"></td><td class="w"></td><td></td><td class="ge"></td></tr>
+<tr class="sum"><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td><td colspan="3" class="gs"></td><td class="q"></td><td class="ge"></td></tr>
+<tr class="tot"><td class="day">계</td><td colspan="5" class="gs ge">307,570</td><td colspan="5" class="gs ge">75,878</td><td colspan="5" class="gs ge">231,598</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+  <p class="hint">엑셀 시트 서식(호기별 5열, 일자 블록, 일계·주간 계)을 그대로 재현했습니다. 금·토는 수요에 따라 가동하므로 비어 있습니다.</p>
+</section>
+
+<section class="card noprint" id="sec5">
+  <h2><span><span class="num">5</span>사용자 관리 <small style="font-weight:normal;color:var(--sub)">(관리자 전용)</small></span><button class="p">+ 사용자 추가</button></h2>
+  <div style="overflow-x:auto"><table class="f">
+    <tr><th>아이디</th><th>이름</th><th>초기 비번</th><th>작성(담당자)</th><th>승인</th><th>배포</th><th>사용자관리</th><th>상태</th><th>관리</th></tr>
+    <tr><td>admin</td><td>관리자</td><td>0000</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><span class="chip c-ok">사용</span></td><td><button>수정</button></td></tr>
+    <tr><td>김영동</td><td>김영동</td><td>0000</td><td><input type="checkbox" checked></td><td><input type="checkbox"></td><td><input type="checkbox"></td><td><input type="checkbox"></td><td><span class="chip c-ok">사용</span></td><td><button>수정</button></td></tr>
+    <tr><td>박용희</td><td>박용희</td><td>0000</td><td><input type="checkbox"></td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox"></td><td><span class="chip c-no">미등록</span></td><td><button>등록</button></td></tr>
+  </table></div>
+  <p class="hint">최초 계정: admin / 김영동, 비밀번호 0000 (최초 로그인 후 변경 권장)</p>
+</section>
+</main>
+
+<div class="modal" id="login" onclick="if(event.target===this)closeLogin()">
+  <div class="box">
+    <h3>로그인</h3>
+    <div class="row"><label for="uid">아이디</label><input id="uid" type="text" placeholder="admin 또는 김영동"></div>
+    <div class="row"><label for="upw">비밀번호</label><input id="upw" type="password" placeholder="초기 비번 0000"></div>
+    <div class="actions" style="justify-content:flex-end"><button onclick="closeLogin()">취소</button><button class="p" onclick="fakeLogin()">로그인</button></div>
+    <p class="hint">※ 시안: 실제 인증은 하지 않고 화면 표시만 바뀝니다.</p>
+  </div>
+</div>
+
+<script>
+function go(n){
+  document.querySelectorAll('.step').forEach(s=>{const k=+s.dataset.s;s.className='step'+(k===n?' on':k<n?' done':'')});
+  const t=document.getElementById('sec'+(n===1||n>=3?1:n));
+  if(t)t.scrollIntoView({behavior:'smooth'});
+}
+function openLogin(){document.getElementById('login').classList.add('show')}
+function closeLogin(){document.getElementById('login').classList.remove('show')}
+function fakeLogin(){
+  const id=document.getElementById('uid').value.trim()||'admin';
+  const admin=id==='admin';
+  document.getElementById('uname').textContent=(admin?'관리자':id)+' ('+id+')';
+  document.getElementById('urole').textContent=admin?'관리자':'담당자';
+  closeLogin();
+}
+
+(function(){
+  const days=['월','화','수','목','금','토','일'],t=document.getElementById('shift');
+  days.forEach((d,i)=>{
+    let h='<tr><td class="d'+(i==5?' we':i==6?' we':'')+'">'+d+'</td>';
+    for(let m=0;m<3;m++)['day','night'].forEach(k=>{
+      const on=i<4||(i==4&&k=='day');
+      h+='<td><button type="button" class="tg '+k+(on?' on':'')+'" data-d="'+i+'" data-m="'+m+'">'+(k=='day'?'주간':'야간')+'</button></td>';
+    });
+    t.insertAdjacentHTML('beforeend',h+'</tr>');
+  });
+  function upd(){
+    const on=[...t.querySelectorAll('.tg.on')];
+    let last=-1;on.forEach(b=>{last=Math.max(last,+b.dataset.d)});
+    let msg='가동 없음';
+    if(last>=0){
+      msg='마지막 가동: '+[0,1,2].map(m=>{
+        const o=on.filter(b=>+b.dataset.m===m);
+        if(!o.length)return (m+1)+'호기 없음';
+        const ld=Math.max(...o.map(b=>+b.dataset.d));
+        const k=o.filter(b=>+b.dataset.d===ld).map(b=>b.classList.contains('night')).includes(true)?'야간':'주간';
+        return (m+1)+'호기 '+days[ld]+' '+k;}).join(' · ');
+    }
+    document.getElementById('last').textContent=msg;
+  }
+  t.addEventListener('click',e=>{if(e.target.classList.contains('tg')){e.target.classList.toggle('on');upd()}});
+  upd();
+})();
+</script>
+</body>
+</html>

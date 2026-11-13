@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>벽지 생산실적 2025</title>
+<style>
+  body { font-family: "Malgun Gothic", sans-serif; margin: 0; padding: 32px 48px; background: #fff; color: #222; }
+  h1 { font-size: 36px; margin: 0 0 8px; }
+  .purpose { font-size: 18px; color: #555; margin-bottom: 28px; }
+  h2 { font-size: 26px; margin: 32px 0 12px; border-left: 6px solid #2b6cb0; padding-left: 12px; }
+  .cards { display: flex; gap: 20px; flex-wrap: wrap; }
+  .card { flex: 1; min-width: 280px; border: 2px solid #cbd5e0; border-radius: 12px; padding: 18px 22px; }
+  .card h3 { margin: 0 0 12px; font-size: 24px; color: #2b6cb0; }
+  .card div { display: flex; justify-content: space-between; font-size: 20px; padding: 3px 0; }
+  .card .big { font-weight: bold; font-size: 24px; }
+  table { border-collapse: collapse; width: 100%; font-size: 20px; }
+  th, td { border: 1px solid #cbd5e0; padding: 10px 14px; text-align: right; }
+  th { background: #2b6cb0; color: #fff; text-align: center; }
+  td:first-child, td:nth-child(2) { text-align: center; }
+  tr.sub td { background: #ebf4ff; font-weight: bold; }
+  tr.total td { background: #2b6cb0; color: #fff; font-weight: bold; }
+  .legend { font-size: 20px; margin-bottom: 12px; }
+  .legend span { margin-right: 28px; }
+  .legend i { display: inline-block; width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; border-radius: 3px; }
+  .charts { display: flex; flex-wrap: wrap; gap: 20px; }
+  .chart { flex: 1; min-width: 420px; border: 2px solid #cbd5e0; border-radius: 12px; padding: 12px 18px; }
+  .chart.wide { flex-basis: 100%; }
+  .chart h3 { margin: 0 0 6px; font-size: 22px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .note { margin-top: 24px; font-size: 16px; color: #666; line-height: 1.7; }
+</style>
+</head>
+<body>
+<h1>벽지 생산실적 - 설비별·조별 (2025년 연간)</h1>
+<div class="purpose">매주 금요일 다음 주 벽지생산계획 수립 → 벽지생산팀장 승인 → 모니터 게시</div>
+
+<h2>설비별 요약</h2>
+<div class="cards" id="cards"></div>
+
+<h2>설비 × 작업조 실적표</h2>
+<table>
+  <thead>
+    <tr><th>설비</th><th>작업조</th><th>투입</th><th>양품</th><th>수율(%)</th>
+        <th>총가동시간(분)</th><th>공가동시간(분)</th><th>순가동시간(분)</th><th>가동율(%)</th></tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<h2>설비·작업조별 그래프</h2>
+<div class="legend" id="legend"></div>
+<div class="charts">
+  <div class="chart"><h3>① 수율(%)</h3><div id="c1"></div></div>
+  <div class="chart"><h3>② 가동율(%)</h3><div id="c2"></div></div>
+  <div class="chart wide"><h3>③ 가동시간 구성 (분) - 순가동 + 공가동</h3><div id="c3"></div></div>
+</div>
+
+<div class="note">
+  · 출처: data/기초자료.xlsx "통계-생산실적" 시트의 2025년 실적 (집계 파일: docs/실적집계_2025.json)<br>
+  · 수율 = 양품 ÷ 투입 × 100 &nbsp;|&nbsp; 순가동시간 = 총가동시간 − 공가동시간 &nbsp;|&nbsp; 가동율 = 순가동시간 ÷ 총가동시간 × 100 (소수점 첫째 자리까지)
+</div>
+
+<script src="docs/실적집계_2025.js"></script>
+<script>
+  const n0 = v => Math.round(v).toLocaleString('ko-KR');
+  const p1 = v => v.toFixed(1);
+
+  function calc(rows) {
+    const s = rows.reduce((a, r) => ({
+      투입: a.투입 + r.투입, 양품: a.양품 + r.양품,
+      총: a.총 + r.총가동시간, 공: a.공 + r.공가동시간
+    }), { 투입: 0, 양품: 0, 총: 0, 공: 0 });
+    s.순 = s.총 - s.공;
+    s.수율 = s.양품 / s.투입 * 100;
+    s.가동율 = s.순 / s.총 * 100;
+    return s;
+  }
+
+  const 설비목록 = [...new Set(실적데이터.map(r => r.설비))];
+
+  // 설비별 카드
+  document.getElementById('cards').innerHTML = 설비목록.map(e => {
+    const s = calc(실적데이터.filter(r => r.설비 === e));
+    return `<div class="card"><h3>${e}</h3>
+      <div><span>투입</span><span>${n0(s.투입)}</span></div>
+      <div><span>양품</span><span>${n0(s.양품)}</span></div>
+      <div class="big"><span>수율</span><span>${p1(s.수율)}%</span></div>
+      <div><span>총가동시간</span><span>${n0(s.총)}분</span></div>
+      <div><span>공가동시간</span><span>${n0(s.공)}분</span></div>
+      <div><span>순가동시간</span><span>${n0(s.순)}분</span></div>
+      <div class="big"><span>가동율</span><span>${p1(s.가동율)}%</span></div></div>`;
+  }).join('');
+
+  // 실적표
+  const line = (a, b, s, cls) => `<tr class="${cls}"><td>${a}</td><td>${b}</td><td>${n0(s.투입)}</td><td>${n0(s.양품)}</td>
+    <td>${p1(s.수율)}</td><td>${n0(s.총)}</td><td>${n0(s.공)}</td><td>${n0(s.순)}</td><td>${p1(s.가동율)}</td></tr>`;
+  let html = '';
+  for (const e of 설비목록) {
+    const rs = 실적데이터.filter(r => r.설비 === e);
+    for (const r of rs) html += line(e, r.작업조, calc([r]), '');
+    if (rs.length > 1) html += line(e, '소계', calc(rs), 'sub');
+  }
+  html += line('전체', '합계', calc(실적데이터), 'total');
+  document.getElementById('tbody').innerHTML = html;
+
+  // ---- 그래프 (SVG 직접 그리기) ----
+  const 색 = ['#2b6cb0', '#dd6b20', '#2f855a'];
+  const 설비색 = e => 색[설비목록.indexOf(e)];
+  document.getElementById('legend').innerHTML =
+    설비목록.map(e => `<span><i style="background:${설비색(e)}"></i>${e}</span>`).join('');
+
+  const 항목 = 실적데이터.map(r => ({ 이름: r.설비.replace('벽지 ', '') + ' ' + r.작업조, 설비: r.설비, s: calc([r]) }));
+
+  // 막대그래프: key = 수율 또는 가동율
+  function barChart(id, key, min, max) {
+    const W = 700, H = 360, L = 50, B = 50, T = 30, bw = (W - L) / 항목.length;
+    let g = '';
+    for (let t = min; t <= max; t += (max - min) / 5) {
+      const y = T + (H - T - B) * (1 - (t - min) / (max - min));
+      g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#e2e8f0"/><text x="${L - 6}" y="${y + 5}" font-size="14" text-anchor="end">${t}</text>`;
+    }
+    항목.forEach((d, i) => {
+      const v = d.s[key], h = (H - T - B) * (v - min) / (max - min);
+      const x = L + i * bw + bw * 0.15, y = H - B - h;
+      g += `<rect x="${x}" y="${y}" width="${bw * 0.7}" height="${h}" fill="${설비색(d.설비)}"/>
+        <text x="${x + bw * 0.35}" y="${y - 6}" font-size="18" font-weight="bold" text-anchor="middle">${p1(v)}</text>
+        <text x="${x + bw * 0.35}" y="${H - B + 24}" font-size="16" text-anchor="middle">${d.이름}</text>`;
+    });
+    document.getElementById(id).innerHTML = `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  }
+  barChart('c1', '수율', 90, 100);
+  barChart('c2', '가동율', 0, 100);
+
+  // 쌓은 막대: 순가동 + 공가동
+  (function () {
+    const W = 1400, H = 380, L = 80, B = 50, T = 30, bw = (W - L) / 항목.length;
+    const max = Math.ceil(Math.max(...항목.map(d => d.s.총)) / 50000) * 50000;
+    let g = '';
+    for (let t = 0; t <= max; t += max / 5) {
+      const y = T + (H - T - B) * (1 - t / max);
+      g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#e2e8f0"/><text x="${L - 6}" y="${y + 5}" font-size="14" text-anchor="end">${n0(t)}</text>`;
+    }
+    항목.forEach((d, i) => {
+      const x = L + i * bw + bw * 0.25, w = bw * 0.5, sc = (H - T - B) / max;
+      const h1 = d.s.순 * sc, h2 = d.s.공 * sc, y1 = H - B - h1, y2 = y1 - h2;
+      g += `<rect x="${x}" y="${y1}" width="${w}" height="${h1}" fill="${설비색(d.설비)}"/>
+        <rect x="${x}" y="${y2}" width="${w}" height="${h2}" fill="#a0aec0"/>
+        <text x="${x + w / 2}" y="${y1 + h1 / 2 + 6}" font-size="18" fill="#fff" text-anchor="middle">순 ${n0(d.s.순)}</text>
+        <text x="${x + w / 2}" y="${y2 + h2 / 2 + 6}" font-size="16" text-anchor="middle">공 ${n0(d.s.공)}</text>
+        <text x="${x + w / 2}" y="${H - B + 24}" font-size="18" text-anchor="middle">${d.이름}</text>`;
+    });
+    g += `<text x="${W - 10}" y="20" font-size="16" text-anchor="end" fill="#555">회색 = 공가동시간(패턴교체 등)</text>`;
+    document.getElementById('c3').innerHTML = `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  })();
+</script>
+</body>
+</html>
