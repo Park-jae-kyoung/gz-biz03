@@ -71,7 +71,7 @@ table.stock td.r{text-align:right}
 .steps{margin-bottom:8px}.step{padding:5px 10px;font-size:13px}.step span{font-size:11px}
 main{padding-top:10px}
 .card.top{padding:10px 12px;margin-bottom:10px}
-.cols{display:grid;grid-template-columns:1.25fr 1.1fr 1fr;gap:12px}
+.cols{display:grid;grid-template-columns:1.1fr 1.2fr 1.05fr .95fr;gap:10px}
 .col{border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
 .col h2{font-size:14px;margin:0 0 6px;justify-content:flex-start}.col h2 small{font-weight:normal;color:var(--sub);font-size:11px}
 .col .num{width:18px;height:18px;font-size:11px}
@@ -87,7 +87,7 @@ main{padding-top:10px}
 .col button{padding:2px 8px;font-size:12px}
 .col .flow{gap:4px}.col .flow .node{min-width:0;padding:4px 8px;font-size:12px;flex:1}.col .flow .arrow{font-size:14px}
 .col .actions{margin-top:8px;gap:4px}
-@media(max-width:1000px){.cols{grid-template-columns:1fr}}
+@media(max-width:1100px){.cols{grid-template-columns:1fr 1fr}}@media(max-width:700px){.cols{grid-template-columns:1fr}}
 .editor{position:fixed;inset:0;background:#fff;z-index:30;display:none;flex-direction:column}
 .editor.show{display:flex}
 .etool{display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--pri);color:#fff;flex-wrap:wrap}
@@ -99,6 +99,21 @@ main{padding-top:10px}
 .editor td.sel{background:#e8f0fb}
 .editor td[contenteditable]:focus{background:#fff6b0;outline:2px solid #5b9bd5;outline-offset:-2px}
 body.lock{overflow:hidden}
+.ug{font-size:11px;font-weight:bold;color:var(--pri);margin:6px 0 3px;border-bottom:1px solid var(--line);padding-bottom:2px}
+.ug:first-of-type{margin-top:0}
+.up{display:grid;grid-template-columns:1fr auto;gap:2px 6px;align-items:center;padding:3px 0;border-bottom:1px dashed #e4e8ef}
+.up .un{font-size:12px;grid-column:1}.up .un small{color:var(--sub);margin-left:4px;font-size:10px}
+.ub{grid-column:2;grid-row:1;cursor:pointer;border:1px solid var(--line);border-radius:5px;padding:2px 8px;font-size:11px;background:#fff;white-space:nowrap}
+.ub:hover{background:var(--pri2)}
+.uf{grid-column:1/3;display:flex;gap:6px;align-items:center;min-width:0;font-size:11px}
+.uf .chip{font-size:10px;padding:0 7px}.uf .fn{color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upbar{display:flex;gap:6px;align-items:center;margin-bottom:4px;min-width:0}
+.upbar .fn{font-size:11px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ul.cl{list-style:none;margin:0;padding:0}
+ul.cl li{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:4px;font-size:12px;padding:2px 0;border-bottom:1px dashed #e4e8ef}
+ul.cl li small{color:var(--sub);font-size:10px;margin-left:4px}
+ul.cl .ck{font-size:14px;color:#9aa3b2}ul.cl li.ok .ck{color:var(--ok)}ul.cl li.miss .ck{color:#c0392b}
+ul.cl .rs{font-size:11px;color:var(--sub)}ul.cl li.ok .rs{color:var(--ok)}ul.cl li.miss .rs{color:#c0392b}
 /* 모달 */
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:10}
 .modal.show{display:flex}
@@ -117,6 +132,7 @@ body.lock{overflow:hidden}
  table.plan{font-size:12px}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
@@ -135,7 +151,7 @@ body.lock{overflow:hidden}
 <div class="notice noprint sm">※ 화면 시안입니다. 버튼은 동작하지 않으며(인쇄·화면 이동 제외), 계획표 숫자는 엑셀 「참조-생산계획26.11월1주」 월~목 데이터를 옮긴 <b>샘플</b>입니다.</div>
 
 <div class="steps noprint" id="steps">
-  <div class="step on" data-s="1" onclick="go(1)">① 기간·변수 입력<span>작업기간, 설비, 재고기준</span></div>
+  <div class="step on" data-s="1" onclick="go(1)">① 파일·기간·변수 입력<span>파일 업로드, 작업기간, 재고기준</span></div>
   <div class="step" data-s="2" onclick="go(2)">② 계획표 생성<span>자동 배정</span></div>
   <div class="step" data-s="3" onclick="go(3)">③ 담당자 검토·수정<span>김영동</span></div>
   <div class="step" data-s="4" onclick="go(4)">④ 승인<span>박용희</span></div>
@@ -145,7 +161,28 @@ body.lock{overflow:hidden}
 <section class="card noprint top" id="sec1">
   <div class="cols">
     <div class="col">
-      <h2><span class="num">1</span>작업기간</h2>
+      <h2><span class="num">1</span>파일 업로드 <span class="chip c-wait" id="upcnt">필수 0/3</span></h2>
+      <div class="upbar">
+        <label class="ub">엑셀 파일 선택<input type="file" id="upfile" accept=".xlsx,.xls" hidden></label>
+        <span class="fn" id="upname">시트가 분리된 엑셀 1개를 올립니다</span>
+      </div>
+      <div class="ug">매주 필수 시트</div>
+      <ul class="cl">
+        <li data-k="order"><span class="ck">☐</span><span class="nm">주문현황</span><span class="rs"></span></li>
+        <li data-k="stock"><span class="ck">☐</span><span class="nm">재고현황<small>금진·천안</small></span><span class="rs"></span></li>
+        <li data-k="lack"><span class="ck">☐</span><span class="nm">결품</span><span class="rs"></span></li>
+      </ul>
+      <div class="ug">분기·특수 시 (선택)</div>
+      <ul class="cl">
+        <li data-k="master"><span class="ck">☐</span><span class="nm">제품마스터<small>1파렛트량</small></span><span class="rs"></span></li>
+        <li data-k="rule"><span class="ck">☐</span><span class="nm">벽지재고관리기준</span><span class="rs"></span></li>
+        <li data-k="result"><span class="ck">☐</span><span class="nm">통계-생산실적</span><span class="rs"></span></li>
+      </ul>
+      <div class="hint" id="upother"></div>
+    </div>
+
+    <div class="col">
+      <h2><span class="num">2</span>작업기간</h2>
       <div class="dates">
         <input type="date" id="d1" value="2026-11-16"> ~ <input type="date" id="d2" value="2026-11-22">
       </div>
@@ -157,7 +194,7 @@ body.lock{overflow:hidden}
     </div>
 
     <div class="col">
-      <h2><span class="num">2</span>작업변수 <small>재고생산 (1파렛트 1,872M · 3파렛트 단위)</small></h2>
+      <h2><span class="num">3</span>작업변수 <small>재고생산 (1파렛트 1,872M · 3파렛트 단위)</small></h2>
       <table class="f stock">
         <tr><th>등급</th><th>파렛트 수</th><th>환산(M)</th></tr>
         <tr><td><b>S등급</b></td><td><input type="number" min="0" step="3" value="0"></td><td class="r">0</td></tr>
@@ -172,7 +209,7 @@ body.lock{overflow:hidden}
     </div>
 
     <div class="col">
-      <h2><span class="num">3</span>진행상태 <span class="chip c-wait">작성중</span></h2>
+      <h2><span class="num">4</span>진행상태 <span class="chip c-wait">작성중</span></h2>
       <div class="flow">
         <div class="node"><b>담당자</b><br>김영동<br><span class="chip c-wait">작성중</span></div><div class="arrow">→</div>
         <div class="node"><b>승인자</b><br>박용희<br><span class="chip c-no">대기</span></div><div class="arrow">→</div>
@@ -470,6 +507,39 @@ window.PlanEdit=(function(){
     document.getElementById('sec2').scrollIntoView({behavior:'smooth'});
   }
   return {open,add,del,undo,done,cancel,generate};
+})();
+
+
+(function(){
+  const rules={order:n=>n.includes('주문현황'),stock:n=>n.startsWith('재고'),lack:n=>n.includes('결품'),
+    master:n=>n.includes('제품마스터'),rule:n=>n.includes('벽지재고관리기준'),result:n=>n.includes('생산실적')};
+  const req=['order','stock','lack'],$=id=>document.getElementById(id);
+  function reset(){
+    document.querySelectorAll('ul.cl li').forEach(li=>{li.className='';li.querySelector('.ck').textContent='☐';li.querySelector('.rs').textContent=''});
+    $('upcnt').className='chip c-wait';$('upcnt').textContent='필수 0/3';$('upother').textContent='';
+  }
+  $('upfile').addEventListener('change',async e=>{
+    const f=e.target.files[0];reset();
+    if(!f){$('upname').textContent='시트가 분리된 엑셀 1개를 올립니다';return}
+    $('upname').textContent=f.name+' 분석 중...';
+    if(typeof XLSX==='undefined'){$('upname').textContent='분석 도구를 불러오지 못했습니다(인터넷 연결 필요)';return}
+    try{
+      const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+      const names=wb.SheetNames,used=new Set();let ok=0;
+      document.querySelectorAll('ul.cl li').forEach(li=>{
+        const k=li.dataset.k,nm=names.find(n=>rules[k](n)),isReq=req.includes(k);
+        if(nm){used.add(nm);ok+=isReq?1:0;
+          const ref=wb.Sheets[nm]['!ref'],rows=ref?XLSX.utils.decode_range(ref).e.r+1:0;
+          li.className='ok';li.querySelector('.ck').textContent='✔';li.querySelector('.rs').textContent=rows.toLocaleString('en-US')+'행';li.title='시트명: '+nm;
+        }else if(isReq){li.className='miss';li.querySelector('.ck').textContent='✖';li.querySelector('.rs').textContent='시트 없음'}
+        else{li.querySelector('.rs').textContent='미포함'}
+      });
+      $('upcnt').textContent='필수 '+ok+'/3';$('upcnt').className='chip '+(ok===3?'c-ok':'c-wait');
+      const other=names.filter(n=>!used.has(n));
+      $('upother').textContent=other.length?'기타 시트: '+other.join(', '):'';
+      $('upname').textContent=f.name+' (시트 '+names.length+'개)';$('upname').title=f.name;
+    }catch(err){$('upname').textContent='파일을 읽지 못했습니다: '+f.name}
+  });
 })();
 </script>
 </body>
