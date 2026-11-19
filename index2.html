@@ -88,6 +88,17 @@ main{padding-top:10px}
 .col .flow{gap:4px}.col .flow .node{min-width:0;padding:4px 8px;font-size:12px;flex:1}.col .flow .arrow{font-size:14px}
 .col .actions{margin-top:8px;gap:4px}
 @media(max-width:1000px){.cols{grid-template-columns:1fr}}
+.editor{position:fixed;inset:0;background:#fff;z-index:30;display:none;flex-direction:column}
+.editor.show{display:flex}
+.etool{display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--pri);color:#fff;flex-wrap:wrap}
+.etool .t{font-weight:bold;margin-right:8px}.etool .selinfo{margin-left:auto;font-size:12px;opacity:.95}
+.etool button{padding:4px 12px;color:var(--ink)}.etool button.p{background:#2e7d32;border-color:#2e7d32;color:#fff}
+.ebody{flex:1;overflow:auto;padding:10px 14px}
+.editor .sheet{min-width:1150px}
+.editor td[contenteditable]{cursor:text}.editor td[contenteditable]:hover{background:#fffbe0}
+.editor td.sel{background:#e8f0fb}
+.editor td[contenteditable]:focus{background:#fff6b0;outline:2px solid #5b9bd5;outline-offset:-2px}
+body.lock{overflow:hidden}
 /* 모달 */
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:10}
 .modal.show{display:flex}
@@ -97,6 +108,7 @@ main{padding-top:10px}
 .box .row input{width:100%}
 @media print{
  @page{size:A4 landscape;margin:8mm}
+ .editor{display:none!important}
  header,.notice,.steps,.card.noprint,.noprint,.hint{display:none!important}
  body{background:#fff}main{padding:0;max-width:none}
  .card{border:0;padding:0;margin:0}
@@ -135,7 +147,7 @@ main{padding-top:10px}
     <div class="col">
       <h2><span class="num">1</span>작업기간</h2>
       <div class="dates">
-        <input type="date" value="2026-11-16"> ~ <input type="date" value="2026-11-22">
+        <input type="date" id="d1" value="2026-11-16"> ~ <input type="date" id="d2" value="2026-11-22">
       </div>
       <div class="gh"><b>요일별 가동 (주/야)</b></div>
       <table class="shift" id="shift">
@@ -172,7 +184,7 @@ main{padding-top:10px}
         <tr><th>승인 일시</th><td>-</td></tr>
       </table>
       <div class="actions">
-        <button class="p" onclick="go(2)">계획표 생성</button>
+        <button class="p" onclick="PlanEdit.generate()">계획표 생성</button>
         <button>검토 완료·승인 요청</button>
         <button>승인</button><button>반려</button>
         <button class="p" disabled title="승인 후 사용 가능">배포</button>
@@ -183,8 +195,8 @@ main{padding-top:10px}
 
 <section class="card" id="sec2">
   <h2><span><span class="num">2</span>생산계획표 <small style="font-weight:normal;color:var(--sub)">(샘플)</small></span>
-    <span class="noprint"><button onclick="document.getElementById('sheet').toggleAttribute('data-edit')">검토·수정 모드 안내</button>
-    <button class="p" onclick="window.print()">🖨 인쇄</button></span></h2>
+    <span class="noprint"><button class="p" onclick="PlanEdit.open()">✏ 수정</button>
+    <button onclick="window.print()">🖨 인쇄</button></span></h2>
   <div class="sheetwrap"><div class="sheet" id="sheet">
     <h3>★. (주)금진 11월 1주차 생산계획</h3>
     <table class="plan">
@@ -269,6 +281,18 @@ main{padding-top:10px}
 </section>
 </main>
 
+<div class="editor" id="editor">
+  <div class="etool noprint">
+    <span class="t">✏ 생산계획표 수정</span>
+    <button onclick="PlanEdit.add()">행 추가</button>
+    <button onclick="PlanEdit.del()">행 삭제</button>
+    <button onclick="PlanEdit.undo()">되돌리기</button>
+    <button class="p" onclick="PlanEdit.done()">수정 완료</button>
+    <button onclick="PlanEdit.cancel()">취소</button>
+    <span class="selinfo" id="selinfo">칸을 클릭해 수정하세요. 행 추가/삭제는 선택한 호기 열 기준입니다.</span>
+  </div>
+  <div class="ebody" id="ebody"></div>
+</div>
 <div class="modal" id="login" onclick="if(event.target===this)closeLogin()">
   <div class="box">
     <h3>로그인</h3>
@@ -321,6 +345,131 @@ function fakeLogin(){
   }
   t.addEventListener('click',e=>{if(e.target.classList.contains('tg')){e.target.classList.toggle('on');upd()}});
   upd();
+})();
+
+window.PlanEdit=(function(){
+  const CL=['c1','q','w','','ge'],blank=()=>['','','','',''],isBlank=r=>r.every(v=>!String(v).trim());
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const num=v=>parseFloat(String(v).replace(/,/g,''))||0;
+  const fq=v=>{v=Math.round(v*10)/10;if(!v)return '';return Math.abs(v-Math.round(v))>1e-6?v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1}):Math.round(v).toLocaleString('en-US')};
+  const tbody=()=>document.querySelector('#sheet tbody');
+  let model=[],work=[],hist=[],sel=null,pending=null;
+  function parse(){
+    const out=[];let cur=null;
+    tbody().querySelectorAll('tr').forEach(tr=>{
+      if(tr.classList.contains('sum')||tr.classList.contains('tot'))return;
+      const dt=tr.querySelector('td.day');
+      if(dt){const dv=dt.querySelectorAll('div');cur={d:dv[0].textContent,w:dv[1].textContent,m:[[],[],[]]};out.push(cur)}
+      const tds=[...tr.children].filter(t=>!t.classList.contains('day'));
+      for(let m=0;m<3;m++)cur.m[m].push(tds.slice(m*5,m*5+5).map(t=>t.textContent.trim()));
+    });
+    out.forEach(d=>d.m.forEach(l=>{while(l.length&&isBlank(l[l.length-1]))l.pop()}));
+    return out;
+  }
+  function html(data,edit){
+    let h='';const tot=[0,0,0];
+    data.forEach((d,di)=>{
+      const n=Math.max(3,...d.m.map(l=>l.length));
+      const sums=d.m.map(l=>l.reduce((a,r)=>a+num(r[1]),0));
+      sums.forEach((v,i)=>tot[i]+=v);
+      for(let r=0;r<n;r++){
+        h+='<tr>';
+        if(r===0)h+='<td class="day" rowspan="'+(n+1)+'"><div>'+esc(d.d)+'</div><div>'+esc(d.w)+'</div></td>';
+        for(let m=0;m<3;m++){const row=d.m[m][r]||blank();
+          for(let c=0;c<5;c++){
+            let cls=CL[c];if(c===0&&m>0)cls+=' gs';
+            const ce=edit?' contenteditable="true" data-d="'+di+'" data-m="'+m+'" data-r="'+r+'" data-c="'+c+'"':'';
+            h+='<td class="'+cls+'"'+ce+'>'+esc(row[c])+'</td>';
+          }}
+        h+='</tr>\n';
+      }
+      h+='<tr class="sum">';
+      for(let m=0;m<3;m++)h+='<td colspan="3" class="gs"></td><td class="q" data-sum="'+di+','+m+'">'+fq(sums[m])+'</td><td class="ge"></td>';
+      h+='</tr>\n';
+    });
+    h+='<tr class="tot"><td class="day">계</td>';
+    for(let m=0;m<3;m++)h+='<td colspan="5" class="gs ge" data-tot="'+m+'">'+Math.round(tot[m]).toLocaleString('en-US')+'</td>';
+    return h+'</tr>';
+  }
+  const ed=()=>document.getElementById('editor'),eb=()=>document.getElementById('ebody'),et=()=>eb().querySelector('tbody');
+  const snap=()=>JSON.stringify(work);
+  function recalc(){
+    const tot=[0,0,0];
+    work.forEach((d,di)=>d.m.forEach((l,m)=>{
+      const v=l.reduce((a,r)=>a+num(r[1]),0);tot[m]+=v;
+      const c=et().querySelector('[data-sum="'+di+','+m+'"]');if(c)c.textContent=fq(v);
+    }));
+    tot.forEach((v,m)=>{const c=et().querySelector('[data-tot="'+m+'"]');if(c)c.textContent=Math.round(v).toLocaleString('en-US')});
+  }
+  function mark(){
+    et().querySelectorAll('td.sel').forEach(t=>t.classList.remove('sel'));
+    const info=document.getElementById('selinfo');
+    if(!sel){info.textContent='칸을 클릭해 수정하세요. 행 추가/삭제는 선택한 호기 열 기준입니다.';return}
+    et().querySelectorAll('td[data-d="'+sel.d+'"][data-m="'+sel.m+'"][data-r="'+sel.r+'"]').forEach(t=>t.classList.add('sel'));
+    info.textContent='선택: '+work[sel.d].d+'('+work[sel.d].w+') '+(sel.m+1)+'호기 '+(sel.r+1)+'번째 줄';
+  }
+  function rerender(){et().innerHTML=html(work,true);mark()}
+  function focusCell(d,m,r,c){const t=et().querySelector('td[data-d="'+d+'"][data-m="'+m+'"][data-r="'+r+'"][data-c="'+c+'"]');if(t){t.focus()}}
+  function open(){
+    model=parse();work=JSON.parse(JSON.stringify(model));hist=[];sel=null;
+    const t=document.querySelector('#sheet table.plan'),h3=document.querySelector('#sheet h3');
+    eb().innerHTML='<div class="sheet">'+h3.outerHTML+'<table class="plan">'+t.querySelector('colgroup').outerHTML+t.querySelector('thead').outerHTML+'<tbody></tbody></table></div>';
+    rerender();ed().classList.add('show');document.body.classList.add('lock');
+  }
+  function close(){ed().classList.remove('show');document.body.classList.remove('lock')}
+  function trim(data){data.forEach(d=>d.m.forEach(l=>{while(l.length&&isBlank(l[l.length-1]))l.pop()}));return data}
+  function done(){model=trim(JSON.parse(JSON.stringify(work)));tbody().innerHTML=html(model,false);close()}
+  function cancel(){
+    if(JSON.stringify(trim(JSON.parse(JSON.stringify(work))))!==JSON.stringify(model)&&!confirm('수정한 내용이 사라집니다. 취소할까요?'))return;
+    close();
+  }
+  function need(){if(!sel){alert('수정할 칸을 먼저 클릭해 주세요.');return false}return true}
+  function add(){
+    if(!need())return;hist.push(snap());
+    const l=work[sel.d].m[sel.m];while(l.length<=sel.r)l.push(blank());
+    l.splice(sel.r+1,0,blank());sel.r++;rerender();focusCell(sel.d,sel.m,sel.r,0);
+  }
+  function del(){
+    if(!need())return;
+    const l=work[sel.d].m[sel.m];
+    if(!confirm(work[sel.d].d+'('+work[sel.d].w+') '+(sel.m+1)+'호기 '+(sel.r+1)+'번째 줄을 삭제할까요?\n(같은 줄의 다른 호기는 그대로입니다)'))return;
+    hist.push(snap());if(sel.r<l.length)l.splice(sel.r,1);
+    sel.r=Math.max(0,sel.r-1);rerender();focusCell(sel.d,sel.m,sel.r,0);
+  }
+  function undo(){if(!hist.length){alert('되돌릴 내용이 없습니다.');return}work=JSON.parse(hist.pop());sel=null;rerender()}
+  const root=document.getElementById('editor');
+  const cellOf=e=>e.target.closest&&e.target.closest('td[data-d]');
+  root.addEventListener('focusin',e=>{const t=cellOf(e);if(!t)return;
+    sel={d:+t.dataset.d,m:+t.dataset.m,r:+t.dataset.r};pending=snap();mark()});
+  root.addEventListener('input',e=>{const t=cellOf(e);if(!t)return;
+    const d=+t.dataset.d,m=+t.dataset.m,r=+t.dataset.r,c=+t.dataset.c,l=work[d].m[m];
+    while(l.length<=r)l.push(blank());l[r][c]=t.textContent;recalc()});
+  root.addEventListener('focusout',e=>{const t=cellOf(e);if(!t)return;
+    if(+t.dataset.c===1){const v=num(t.textContent);t.textContent=t.textContent.trim()?fq(v)||'0':'';
+      const l=work[+t.dataset.d].m[+t.dataset.m],r=+t.dataset.r;while(l.length<=r)l.push(blank());l[r][1]=t.textContent;recalc()}
+    if(pending!==null&&snap()!==pending)hist.push(pending);pending=null});
+  root.addEventListener('keydown',e=>{const t=cellOf(e);if(!t)return;
+    if(e.key==='Enter'){e.preventDefault();focusCell(+t.dataset.d,+t.dataset.m,+t.dataset.r+1,+t.dataset.c)}});
+  let base=null;
+  function generate(){
+    if(!base)base=parse();
+    const v1=document.getElementById('d1').value,v2=document.getElementById('d2').value;
+    if(!v1||!v2||v1>v2){alert('작업기간(시작일~종료일)을 확인해 주세요.');return}
+    const W=['일','월','화','수','목','금','토'];
+    const on=new Set([...document.querySelectorAll('#shift .tg.on')].map(b=>b.dataset.d+','+b.dataset.m));
+    const start=new Date(v1+'T00:00:00'),end=new Date(v2+'T00:00:00'),out=[];
+    for(let dt=new Date(start);dt<=end&&out.length<7;dt.setDate(dt.getDate()+1)){
+      const wd=W[dt.getDay()],di=(dt.getDay()+6)%7,b=base.find(x=>x.w===wd);
+      const m=[0,1,2].map(k=>on.has(di+','+k)&&b?JSON.parse(JSON.stringify(b.m[k])):[]);
+      out.push({d:(dt.getMonth()+1)+'/'+dt.getDate(),w:wd,m});
+    }
+    const thu=new Date(start);thu.setDate(thu.getDate()-((thu.getDay()+6)%7)+3);
+    document.querySelector('#sheet h3').textContent='★. (주)금진 '+(thu.getMonth()+1)+'월 '+Math.ceil(thu.getDate()/7)+'주차  생산계획';
+    model=out;tbody().innerHTML=html(out,false);
+    document.querySelectorAll('.step').forEach(x=>{const k=+x.dataset.s;x.className='step'+(k===2?' on':k<2?' done':'')});
+    document.getElementById('sec2').scrollIntoView({behavior:'smooth'});
+  }
+  return {open,add,del,undo,done,cancel,generate};
 })();
 </script>
 </body>
